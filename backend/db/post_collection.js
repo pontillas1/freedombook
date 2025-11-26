@@ -185,3 +185,29 @@ module.exports.AddComment = async function (creds, postId, comment)
       });
 
 }
+/** DELETE OMMENTS
+ * @param {string} postId
+ * @param {string} commentContent
+ * @param {object} creds
+ */
+module.exports.DeleteComment = async function (postId, commentContent, creds) {
+    const postToUpdate = await postCollection.findById(postId);
+    if (!postToUpdate) {
+        throw new Error(`post:${postId} not found`);
+    }
+
+    const isAuthorized = await AccountsRepository
+        .IsAuthorized(creds.username, creds.password) 
+        && postToUpdate.comments.some(comment => comment.commentor === creds.username && comment.content === commentContent);
+
+    if (!isAuthorized) {
+        throw new Error("Unauthorized to delete comment");
+    }
+
+    await postCollection.updateOne(
+        { _id: postId },
+        { $pull: { comments: { commentor: creds.username, content: commentContent } } }
+    );
+
+    return { message: "Comment deleted successfully" };
+}
